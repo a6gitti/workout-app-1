@@ -8,12 +8,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; text-align: center; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; text-align: center; color: #333; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
-        .btn-pdf { background: #007bff; margin-top: 20px; }
-        .stats { margin-top: 20px; font-size: 1.2em; color: #333; }
+        
+        /* Checklist Styling */
+        .checklist { text-align: left; margin: 15px 0; background: #fafafa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+        .check-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 17px; cursor: pointer; }
+        .check-item:last-child { border-bottom: none; }
+        input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
+
+        button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-log { background: #28a745; color: white; }
+        .btn-pdf { background: #007bff; color: white; margin-top: 20px; }
+        
+        .stats { margin-top: 20px; font-size: 1.1em; font-weight: bold; }
         .log { margin-top: 20px; text-align: left; font-size: 0.9em; max-height: 200px; overflow-y: auto; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
 </head>
@@ -21,19 +29,19 @@
 
 <div class="card">
     <h2>💪 Gym Log</h2>
+    <p>Select what you trained:</p>
     
-    <label for="muscle">What did we train today?</label>
-    <select id="muscle">
-        <option value="Chest (Benchpress)">Chest (Benchpress)</option>
-        <option value="Chest (Dumbbells)">Chest (Dumbbells)</option>
-        <option value="Back (Chins/Rows)">Back (Chins/Rows)</option>
-        <option value="Biceps">Arms (Biceps)</option>
-        <option value="Tereceps">Arms (Triceps)</option>
-        <option value="Legs">Legs</option>
-        <option value="Situps">Core (Situps)</option>
-    </select>
+    <div class="checklist" id="muscleList">
+        <label class="check-item"><input type="checkbox" value="Chest (Bench)"> Chest (Bench)</label>
+        <label class="check-item"><input type="checkbox" value="Chest (Dumbbells)"> Chest (Dumbbells)</label>
+        <label class="check-item"><input type="checkbox" value="Back (Chins/Rows)"> Back (Chins/Rows)</label>
+        <label class="check-item"><input type="checkbox" value="Biceps"> Biceps</label>
+        <label class="check-item"><input type="checkbox" value="Triceps"> Triceps</label>
+        <label class="check-item"><input type="checkbox" value="Legs"> Legs</label>
+        <label class="check-item"><input type="checkbox" value="Core (Situps)"> Core (Situps)</label>
+    </div>
 
-    <button onclick="logWorkout()">Finish Workout!</button>
+    <button class="btn-log" onclick="logWorkout()">Finish Workout!</button>
 
     <div class="stats">
         Workouts this week: <span id="weekCount">0</span>
@@ -47,15 +55,27 @@
 </div>
 
 <script>
-    // --- CORE LOGIC ---
     function logWorkout() {
-        const muscle = document.getElementById('muscle').value;
+        // Find all checked boxes
+        const checkboxes = document.querySelectorAll('#muscleList input[type="checkbox"]:checked');
+        
+        if (checkboxes.length === 0) {
+            alert("Please select at least one muscle group!");
+            return;
+        }
+
+        // Combine selected values into one string (e.g., "Back, Biceps")
+        const selectedMuscles = Array.from(checkboxes).map(cb => cb.value).join(", ");
+        
         const now = new Date();
-        const entry = { date: now.toISOString(), type: muscle };
+        const entry = { date: now.toISOString(), type: selectedMuscles };
 
         let history = JSON.parse(localStorage.getItem('gymLogs')) || [];
         history.push(entry);
         localStorage.setItem('gymLogs', JSON.stringify(history));
+
+        // Clear checkboxes for next time
+        checkboxes.forEach(cb => cb.checked = false);
 
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         updateDisplay();
@@ -79,7 +99,6 @@
             }).join('<br>');
     }
 
-    // --- PDF GENERATION ---
     async function downloadPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -88,14 +107,15 @@
         doc.setFontSize(20);
         doc.text("My 2026 Workout Report", 20, 20);
         doc.setFontSize(12);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+        doc.text(`Total Sessions: ${history.length}`, 20, 30);
         doc.text("---------------------------------------", 20, 35);
 
         let yPosition = 45;
-        history.reverse().forEach((item, index) => {
-            if (yPosition > 280) { doc.addPage(); yPosition = 20; } // New page if full
+        // Make sure to copy history before reversing so we don't mess up the main UI
+        [...history].reverse().forEach((item, index) => {
+            if (yPosition > 280) { doc.addPage(); yPosition = 20; }
             const d = new Date(item.date);
-            doc.text(`${index + 1}. ${d.toLocaleDateString()} - ${item.type}`, 20, yPosition);
+            doc.text(`${d.toLocaleDateString()} - ${item.type}`, 20, yPosition);
             yPosition += 10;
         });
 

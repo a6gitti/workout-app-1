@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gym Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+        button { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .stats { margin-top: 20px; font-size: 1.2em; color: #333; }
+        .log { margin-top: 20px; text-align: left; font-size: 0.9em; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>💪 Gym Log</h2>
+    
+    <label for="muscle">What did we train today?</label>
+    <select id="muscle">
+        <option value="Chest (Benchpress)">Chest (Benchpress)</option>
+        <option value="Chest (Dumbbells)">Chest (Dumbbells)</option>
+        <option value="Back (Chins/Rows)">Back (Chins/Rows)</option>
+        <option value="Biceps">Biceps</option>
+        <option value="Legs">Legs</option>
+    </select>
+
+    <button onclick="logWorkout()">Finish Workout!</button>
+
+    <div class="stats">
+        Workouts this week: <span id="weekCount">0</span>
+    </div>
+
+    <div class="log" id="history">
+        <strong>Recent Sessions:</strong><br>
+    </div>
+</div>
+
+<script>
+    function logWorkout() {
+        const muscle = document.getElementById('muscle').value;
+        const now = new Date();
+        const entry = { date: now.toISOString(), type: muscle };
+
+        // Get existing data
+        let history = JSON.parse(localStorage.getItem('gymLogs')) || [];
+        history.push(entry);
+        localStorage.setItem('gymLogs', history);
+
+        // Effects
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        const history = JSON.parse(localStorage.getItem('gymLogs')) || [];
+        const historyDiv = document.getElementById('history');
+        const weekSpan = document.getElementById('weekCount');
+
+        // Calculate workouts this week
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const weeklyCount = history.filter(item => new Date(item.date) > oneWeekAgo).length;
+        
+        weekSpan.innerText = weeklyCount;
+
+        // Display history
+        historyDiv.innerHTML = "<strong>Recent Sessions:</strong><br>" + 
+            history.slice(-5).reverse().map(item => {
+                const d = new Date(item.date);
+                return `• ${d.toLocaleDateString()}: ${item.type}`;
+            }).join('<br>');
+    }
+
+    // Load data on start
+    updateDisplay();
+</script>
+
+</body>
+</html>
